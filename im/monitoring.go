@@ -1,11 +1,14 @@
 package main
 
-import "net/http"
-import "encoding/json"
-import "os"
-import "runtime"
-import "runtime/pprof"
-import log "github.com/golang/glog"
+import (
+	"encoding/json"
+	"net/http"
+	"os"
+	"runtime"
+	"runtime/pprof"
+
+	log "github.com/golang/glog"
+)
 
 type ServerSummary struct {
 	nconnections      int64
@@ -18,7 +21,6 @@ func NewServerSummary() *ServerSummary {
 	s := new(ServerSummary)
 	return s
 }
-
 
 func Summary(rw http.ResponseWriter, req *http.Request) {
 	obj := make(map[string]interface{})

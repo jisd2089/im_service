@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,17 +18,21 @@
  */
 
 package main
-import "time"
-import "sync/atomic"
-import "github.com/valyala/gorpc"
-import log "github.com/golang/glog"
+
+import (
+	"sync/atomic"
+	"time"
+
+	log "github.com/golang/glog"
+	"github.com/valyala/gorpc"
+)
 
 //个人消息／普通群消息／客服消息
 func GetStorageRPCClient(uid int64) *gorpc.DispatcherClient {
 	if uid < 0 {
 		uid = -uid
 	}
-	index := uid%int64(len(rpc_clients))
+	index := uid % int64(len(rpc_clients))
 	return rpc_clients[index]
 }
 
@@ -36,33 +40,32 @@ func GetStorageRPCIndex(uid int64) int64 {
 	if uid < 0 {
 		uid = -uid
 	}
-	index := uid%int64(len(rpc_clients))
+	index := uid % int64(len(rpc_clients))
 	return index
 }
-
 
 //超级群消息
 func GetGroupStorageRPCClient(group_id int64) *gorpc.DispatcherClient {
 	if group_id < 0 {
 		group_id = -group_id
 	}
-	index := group_id%int64(len(group_rpc_clients))
+	index := group_id % int64(len(group_rpc_clients))
 	return group_rpc_clients[index]
 }
 
-func GetChannel(uid int64) *Channel{
+func GetChannel(uid int64) *Channel {
 	if uid < 0 {
 		uid = -uid
 	}
-	index := uid%int64(len(route_channels))
+	index := uid % int64(len(route_channels))
 	return route_channels[index]
 }
 
-func GetGroupChannel(group_id int64) *Channel{
+func GetGroupChannel(group_id int64) *Channel {
 	if group_id < 0 {
 		group_id = -group_id
 	}
-	index := group_id%int64(len(group_route_channels))
+	index := group_id % int64(len(group_route_channels))
 	return group_route_channels[index]
 }
 
@@ -70,7 +73,7 @@ func GetRoomChannel(room_id int64) *Channel {
 	if room_id < 0 {
 		room_id = -room_id
 	}
-	index := room_id%int64(len(route_channels))
+	index := room_id % int64(len(route_channels))
 	return route_channels[index]
 }
 
@@ -78,21 +81,21 @@ func GetGroupMessageDeliver(group_id int64) *GroupMessageDeliver {
 	if group_id < 0 {
 		group_id = -group_id
 	}
-	
+
 	deliver_index := atomic.AddUint64(&current_deliver_index, 1)
-	index := deliver_index%uint64(len(group_message_delivers))
+	index := deliver_index % uint64(len(group_message_delivers))
 	return group_message_delivers[index]
 }
 
 func SaveGroupMessage(appid int64, gid int64, device_id int64, msg *Message) (int64, int64, error) {
 	dc := GetGroupStorageRPCClient(gid)
-	
+
 	gm := &GroupMessage{
-		AppID:appid,
-		GroupID:gid,
-		DeviceID:device_id,
-		Cmd:int32(msg.cmd),
-		Raw:msg.ToData(),
+		AppID:    appid,
+		GroupID:  gid,
+		DeviceID: device_id,
+		Cmd:      int32(msg.cmd),
+		Raw:      msg.ToData(),
 	}
 	resp, err := dc.Call("SaveGroupMessage", gm)
 	if err != nil {
@@ -111,15 +114,15 @@ func SavePeerGroupMessage(appid int64, members []int64, device_id int64, m *Mess
 	if len(members) == 0 {
 		return nil, nil
 	}
-	
+
 	dc := GetStorageRPCClient(members[0])
-	
+
 	pm := &PeerGroupMessage{
-		AppID:appid,
-		Members:members,
-		DeviceID:device_id,
-		Cmd:int32(m.cmd),
-		Raw:m.ToData(),
+		AppID:    appid,
+		Members:  members,
+		DeviceID: device_id,
+		Cmd:      int32(m.cmd),
+		Raw:      m.ToData(),
 	}
 
 	resp, err := dc.Call("SavePeerGroupMessage", pm)
@@ -135,13 +138,13 @@ func SavePeerGroupMessage(appid int64, members []int64, device_id int64, m *Mess
 
 func SaveMessage(appid int64, uid int64, device_id int64, m *Message) (int64, int64, error) {
 	dc := GetStorageRPCClient(uid)
-	
+
 	pm := &PeerMessage{
-		AppID:appid,
-		Uid:uid,
-		DeviceID:device_id,
-		Cmd:int32(m.cmd),
-		Raw:m.ToData(),
+		AppID:    appid,
+		Uid:      uid,
+		DeviceID: device_id,
+		Cmd:      int32(m.cmd),
+		Raw:      m.ToData(),
 	}
 
 	resp, err := dc.Call("SavePeerMessage", pm)
@@ -184,14 +187,14 @@ func PushGroupMessage(appid int64, group *Group, m *Message) {
 }
 
 //离线消息推送
-func PushMessage(appid int64, uid int64, m *Message) {	
+func PushMessage(appid int64, uid int64, m *Message) {
 	channel := GetChannel(uid)
 	channel.Push(appid, []int64{uid}, m)
 }
 
 func PublishMessage(appid int64, uid int64, msg *Message) {
 	now := time.Now().UnixNano()
-	amsg := &AppMessage{appid:appid, receiver:uid, timestamp:now, msg:msg}
+	amsg := &AppMessage{appid: appid, receiver: uid, timestamp: now, msg: msg}
 	if msg.meta != nil {
 		amsg.msgid = msg.meta.sync_key
 		amsg.prev_msgid = msg.meta.prev_sync_key
@@ -202,7 +205,7 @@ func PublishMessage(appid int64, uid int64, msg *Message) {
 
 func PublishGroupMessage(appid int64, group_id int64, msg *Message) {
 	now := time.Now().UnixNano()
-	amsg := &AppMessage{appid:appid, receiver:group_id, timestamp:now, msg:msg}
+	amsg := &AppMessage{appid: appid, receiver: group_id, timestamp: now, msg: msg}
 	if msg.meta != nil {
 		amsg.msgid = msg.meta.sync_key
 		amsg.prev_msgid = msg.meta.prev_sync_key
@@ -213,7 +216,7 @@ func PublishGroupMessage(appid int64, group_id int64, msg *Message) {
 
 func SendAppGroupMessage(appid int64, group *Group, msg *Message) {
 	now := time.Now().UnixNano()
-	amsg := &AppMessage{appid:appid, receiver:group.gid, msgid:0, timestamp:now, msg:msg}
+	amsg := &AppMessage{appid: appid, receiver: group.gid, msgid: 0, timestamp: now, msg: msg}
 	channel := GetGroupChannel(group.gid)
 	channel.PublishGroup(amsg)
 	DispatchMessageToGroup(msg, group, appid, nil)
@@ -221,9 +224,9 @@ func SendAppGroupMessage(appid int64, group *Group, msg *Message) {
 
 func SendAppMessage(appid int64, uid int64, msg *Message) {
 	now := time.Now().UnixNano()
-	amsg := &AppMessage{appid:appid, receiver:uid, msgid:0, timestamp:now, msg:msg}
+	aMsg := &AppMessage{appid: appid, receiver: uid, msgid: 0, timestamp: now, msg: msg}
 	channel := GetChannel(uid)
-	channel.Publish(amsg)
+	channel.Publish(aMsg)
 	DispatchMessageToPeer(msg, uid, appid, nil)
 }
 
@@ -239,7 +242,7 @@ func DispatchAppMessage(amsg *AppMessage) {
 		if (amsg.msg.flag & MESSAGE_FLAG_PUSH) == 0 {
 			log.Fatal("invalid message flag", amsg.msg.flag)
 		}
-		meta := &Metadata{sync_key:amsg.msgid, prev_sync_key:amsg.prev_msgid}
+		meta := &Metadata{sync_key: amsg.msgid, prev_sync_key: amsg.prev_msgid}
 		amsg.msg.meta = meta
 	}
 	DispatchMessageToPeer(amsg.msg, amsg.receiver, amsg.appid, nil)
@@ -247,7 +250,7 @@ func DispatchAppMessage(amsg *AppMessage) {
 
 func DispatchRoomMessage(amsg *AppMessage) {
 	log.Info("dispatch room message", Command(amsg.msg.cmd))
-	
+
 	room_id := amsg.receiver
 	DispatchMessageToRoom(amsg.msg, room_id, amsg.appid, nil)
 }
@@ -267,11 +270,11 @@ func DispatchGroupMessage(amsg *AppMessage) {
 		if (amsg.msg.flag & MESSAGE_FLAG_SUPER_GROUP) == 0 {
 			log.Fatal("invalid message flag", amsg.msg.flag)
 		}
-		
-		meta := &Metadata{sync_key:amsg.msgid, prev_sync_key:amsg.prev_msgid}
+
+		meta := &Metadata{sync_key: amsg.msgid, prev_sync_key: amsg.prev_msgid}
 		amsg.msg.meta = meta
 	}
-	
+
 	deliver := GetGroupMessageDeliver(amsg.receiver)
 	deliver.DispatchMessage(amsg)
 }
@@ -286,15 +289,15 @@ func DispatchMessageToGroup(msg *Message, group *Group, appid int64, client *Cli
 		log.Warningf("can't dispatch app message, appid:%d uid:%d cmd:%s", appid, group.gid, Command(msg.cmd))
 		return false
 	}
-	
+
 	members := group.Members()
 	for member := range members {
-	    clients := route.FindClientSet(member)
+		clients := route.FindClientSet(member)
 		if len(clients) == 0 {
 			continue
 		}
-		
-		for c, _ := range(clients) {
+
+		for c, _ := range (clients) {
 			if c == client {
 				continue
 			}
@@ -305,11 +308,10 @@ func DispatchMessageToGroup(msg *Message, group *Group, appid int64, client *Cli
 	return true
 }
 
-
-func DispatchMessageToPeer(msg *Message, uid int64, appid int64, client *Client) bool {
-	route := app_route.FindRoute(appid)
+func DispatchMessageToPeer(msg *Message, uid int64, appID int64, client *Client) bool {
+	route := app_route.FindRoute(appID)
 	if route == nil {
-		log.Warningf("can't dispatch app message, appid:%d uid:%d cmd:%s", appid, uid, Command(msg.cmd))
+		log.Warningf("can't dispatch app message, appID:%d uid:%d cmd:%s", appID, uid, Command(msg.cmd))
 		return false
 	}
 	clients := route.FindClientSet(uid)
@@ -317,7 +319,7 @@ func DispatchMessageToPeer(msg *Message, uid int64, appid int64, client *Client)
 		return false
 	}
 
-	for c, _ := range(clients) {
+	for c, _ := range clients {
 		if c == client {
 			continue
 		}
@@ -333,7 +335,7 @@ func DispatchMessageToRoom(msg *Message, room_id int64, appid int64, client *Cli
 	if len(clients) == 0 {
 		return false
 	}
-	for c, _ := range(clients) {
+	for c, _ := range (clients) {
 		if c == client {
 			continue
 		}

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,37 +19,39 @@
 
 package main
 
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"io"
+	"os"
+	"time"
 
-import "fmt"
-import "io"
-import "os"
-import "time"
-import "bytes"
-import "encoding/binary"
-import log "github.com/golang/glog"
+	log "github.com/golang/glog"
+)
 
 const GROUP_INDEX_FILE_NAME = "group_index.v2"
 
 type GroupID struct {
-	appid  int64
-	gid    int64
+	appid int64
+	gid   int64
 }
 
 type GroupIndex struct {
-	last_msgid int64
-	last_id int64
+	last_msgid    int64
+	last_id       int64
 	last_batch_id int64
-	last_seq_id int64 //最近消息的序号
+	last_seq_id   int64 //最近消息的序号
 }
 
 type GroupStorage struct {
 	*StorageFile
 
-	message_index  map[GroupID]*GroupIndex //记录每个群组最近的消息ID
+	message_index map[GroupID]*GroupIndex //记录每个群组最近的消息ID
 }
 
 func NewGroupStorage(f *StorageFile) *GroupStorage {
-	storage := &GroupStorage{StorageFile:f}
+	storage := &GroupStorage{StorageFile: f}
 	storage.message_index = make(map[GroupID]*GroupIndex)
 	return storage
 }
@@ -64,7 +66,7 @@ func (storage *GroupStorage) SaveGroupMessage(appid int64, gid int64, device_id 
 	last_id := index.last_id
 	last_batch_id := index.last_batch_id
 	last_seq_id := index.last_seq_id
-	
+
 	off := &OfflineMessage4{}
 	off.appid = appid
 	off.receiver = gid
@@ -75,7 +77,7 @@ func (storage *GroupStorage) SaveGroupMessage(appid int64, gid int64, device_id 
 	off.prev_peer_msgid = 0
 	off.prev_batch_msgid = last_batch_id
 
-	m := &Message{cmd:MSG_GROUP_OFFLINE, body:off}
+	m := &Message{cmd: MSG_GROUP_OFFLINE, body: off}
 	last_id = storage.saveMessage(m)
 
 	last_seq_id += 1
@@ -103,14 +105,12 @@ func (storage *GroupStorage) getGroupIndex(appid int64, gid int64) (*GroupIndex)
 	return &GroupIndex{}
 }
 
-
 func (storage *GroupStorage) GetGroupIndex(appid int64, gid int64) (*GroupIndex) {
 	storage.mutex.Lock()
 	defer storage.mutex.Unlock()
-	
+
 	return storage.getGroupIndex(appid, gid)
 }
-
 
 //获取所有消息id大于msgid的消息
 //ts:入群时间
@@ -118,7 +118,7 @@ func (storage *GroupStorage) LoadGroupHistoryMessages(appid int64, uid int64, gi
 	log.Infof("load group history message:%d %d", msgid, ts)
 	msg_index := storage.GetGroupIndex(appid, gid)
 	last_id := msg_index.last_id
-	
+
 	var last_msgid int64
 	c := make([]*EMessage, 0, 10)
 
@@ -134,11 +134,11 @@ func (storage *GroupStorage) LoadGroupHistoryMessages(appid int64, uid int64, gi
 		} else {
 			log.Warning("invalid message cmd:", msg.cmd)
 			break
-		}		
+		}
 		if last_msgid == 0 {
 			last_msgid = off.msgid
 		}
-		
+
 		if off.msgid == 0 || off.msgid <= msgid {
 			break
 		}
@@ -151,7 +151,7 @@ func (storage *GroupStorage) LoadGroupHistoryMessages(appid int64, uid int64, gi
 				break
 			}
 		}
-		c = append(c, &EMessage{msgid:off.msgid, device_id:off.device_id, msg:m})
+		c = append(c, &EMessage{msgid: off.msgid, device_id: off.device_id, msg: m})
 
 		last_id = off.prev_msgid
 
@@ -207,7 +207,7 @@ func (storage *GroupStorage) repairGroupIndex() {
 
 	first := storage.getBlockNO(storage.last_id)
 	off := storage.getBlockOffset(storage.last_id)
-	
+
 	for i := first; i <= storage.block_NO; i++ {
 		file := storage.openReadFile(i)
 		if file == nil {
@@ -219,7 +219,7 @@ func (storage *GroupStorage) repairGroupIndex() {
 		if i == first {
 			offset = off
 		}
-		
+
 		_, err := file.Seek(int64(offset), os.SEEK_SET)
 		if err != nil {
 			log.Warning("seek file err:", err)
@@ -245,9 +245,8 @@ func (storage *GroupStorage) repairGroupIndex() {
 
 		file.Close()
 	}
-	log.Info("repair group message index end:", time.Now().UnixNano())	
+	log.Info("repair group message index end:", time.Now().UnixNano())
 }
-
 
 func (storage *GroupStorage) readGroupIndex() bool {
 	path := fmt.Sprintf("%s/%s", storage.root, GROUP_INDEX_FILE_NAME)
@@ -255,7 +254,7 @@ func (storage *GroupStorage) readGroupIndex() bool {
 	file, err := os.Open(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			log.Fatal("open file:", err)			
+			log.Fatal("open file:", err)
 		}
 		return false
 	}
@@ -305,12 +304,11 @@ func (storage *GroupStorage) removeGroupIndex() {
 
 func (storage *GroupStorage) cloneGroupIndex() map[GroupID]*GroupIndex {
 	message_index := make(map[GroupID]*GroupIndex)
-	for k, v := range(storage.message_index) {
+	for k, v := range (storage.message_index) {
 		message_index[k] = v
 	}
 	return message_index
 }
-
 
 //appid gid msgid = 24字节
 func (storage *GroupStorage) saveGroupIndex(message_index map[GroupID]*GroupIndex) {
@@ -326,17 +324,17 @@ func (storage *GroupStorage) saveGroupIndex(message_index map[GroupID]*GroupInde
 
 	buffer := new(bytes.Buffer)
 	index := 0
-	for id, value := range(message_index) {
+	for id, value := range (message_index) {
 		binary.Write(buffer, binary.BigEndian, id.appid)
 		binary.Write(buffer, binary.BigEndian, id.gid)
-		binary.Write(buffer, binary.BigEndian, value.last_msgid)		
+		binary.Write(buffer, binary.BigEndian, value.last_msgid)
 		binary.Write(buffer, binary.BigEndian, value.last_id)
 		binary.Write(buffer, binary.BigEndian, value.last_batch_id)
 		binary.Write(buffer, binary.BigEndian, value.last_seq_id)
 
 		index += 1
 		//batch write to file
-		if index % 1000 == 0 {
+		if index%1000 == 0 {
 			buf := buffer.Bytes()
 			n, err := file.Write(buf)
 			if err != nil {
@@ -368,9 +366,9 @@ func (storage *GroupStorage) saveGroupIndex(message_index map[GroupID]*GroupInde
 	if err != nil {
 		log.Fatal("rename group index file err:", err)
 	}
-	
+
 	end := time.Now().UnixNano()
-	log.Info("flush group index end:", end, " used:", end - begin)
+	log.Info("flush group index end:", end, " used:", end-begin)
 }
 
 func (storage *GroupStorage) execMessage(msg *Message, msgid int64) {

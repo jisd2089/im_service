@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,25 +19,28 @@
 
 package main
 
-import "sync"
-import "database/sql"
-import _ "github.com/go-sql-driver/mysql"
-import log "github.com/golang/glog"
-import "github.com/gomodule/redigo/redis"
-import "fmt"
-import "strconv"
-import "time"
+import (
+	"database/sql"
+	"fmt"
+	"strconv"
+	"sync"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+	log "github.com/golang/glog"
+	"github.com/gomodule/redigo/redis"
+)
 
 type Store struct {
-	id       int64
-	group_id int64
-	mode     int
+	id      int64
+	groupID int64
+	mode    int
 }
 
 type CustomerService struct {
-	mutex sync.Mutex
-	stores map[int64]*Store
-	sellers map[int64]int //销售员 sellerid:timestamp
+	mutex          sync.Mutex
+	stores         map[int64]*Store
+	sellers        map[int64]int //销售员 sellerid:timestamp
 	online_sellers map[int64]int //在线的销售员 sellerid:timestamp
 }
 
@@ -49,34 +52,38 @@ func NewCustomerService() *CustomerService {
 	return cs
 }
 
-func (cs *CustomerService) LoadStore(db *sql.DB, store_id int64) (*Store, error) {
-	stmtIns, err := db.Prepare("SELECT group_id, mode FROM store WHERE id=?")
+const (
+	_storeSQL = `SELECT group_id, mode FROM store WHERE id=?`
+)
+
+func (cs *CustomerService) LoadStore(db *sql.DB, storeID int64) (*Store, error) {
+	stmtIns, err := db.Prepare(_storeSQL)
 	if err != nil {
 		log.Info("error:", err)
 		return nil, err
 	}
 
 	defer stmtIns.Close()
-	row := stmtIns.QueryRow(store_id)
+	row := stmtIns.QueryRow(storeID)
 
-	var group_id int64
+	var groupID int64
 	var mode int
-	err = row.Scan(&group_id, &mode)
+	err = row.Scan(&groupID, &mode)
 	if err != nil {
 		log.Info("error:", err)
 		return nil, err
 	}
 
 	s := &Store{}
-	s.id = store_id
-	s.group_id = group_id
+	s.id = storeID
+	s.groupID = groupID
 	s.mode = mode
 	return s, nil
 }
 
-func (cs *CustomerService) GetStore(store_id int64) (*Store, error) {
+func (cs *CustomerService) GetStore(storeID int64) (*Store, error) {
 	cs.mutex.Lock()
-	if s, ok := cs.stores[store_id]; ok {
+	if s, ok := cs.stores[storeID]; ok {
 		cs.mutex.Unlock()
 		return s, nil
 	}
@@ -89,12 +96,12 @@ func (cs *CustomerService) GetStore(store_id int64) (*Store, error) {
 	}
 	defer db.Close()
 
-	s, err := cs.LoadStore(db, store_id)
+	s, err := cs.LoadStore(db, storeID)
 	if err != nil {
 		return nil, err
 	}
 	cs.mutex.Lock()
-	cs.stores[store_id] = s
+	cs.stores[storeID] = s
 	cs.mutex.Unlock()
 	return s, nil
 }
@@ -131,7 +138,7 @@ func (cs *CustomerService) IsExist(store_id int64, seller_id int64) bool {
 	now := int(time.Now().Unix())
 	cs.mutex.Lock()
 	if t, ok := cs.sellers[seller_id]; ok {
-		if now - t < 10*60 {
+		if now-t < 10*60 {
 			cs.mutex.Unlock()
 			return true
 		}
@@ -140,7 +147,6 @@ func (cs *CustomerService) IsExist(store_id int64, seller_id int64) bool {
 	}
 	cs.mutex.Unlock()
 
-	
 	conn := redis_pool.Get()
 	defer conn.Close()
 
@@ -173,7 +179,7 @@ func (cs *CustomerService) GetSellerID(store_id int64) int64 {
 		return 0
 	}
 	return staff_id
-	
+
 }
 
 func (cs *CustomerService) GetOrderSellerID(store_id int64) int64 {
@@ -203,7 +209,6 @@ func (cs *CustomerService) GetOrderSellerID(store_id int64) int64 {
 	return seller_id
 }
 
-
 //随机获取一个在线的销售人员
 func (cs *CustomerService) GetOnlineSellerID(store_id int64) int64 {
 	conn := redis_pool.Get()
@@ -223,7 +228,7 @@ func (cs *CustomerService) IsOnline(store_id int64, seller_id int64) bool {
 	now := int(time.Now().Unix())
 	cs.mutex.Lock()
 	if t, ok := cs.online_sellers[seller_id]; ok {
-		if now - t < 10*60 {
+		if now-t < 10*60 {
 			cs.mutex.Unlock()
 			return true
 		}
@@ -234,8 +239,8 @@ func (cs *CustomerService) IsOnline(store_id int64, seller_id int64) bool {
 
 	conn := redis_pool.Get()
 	defer conn.Close()
-	key := fmt.Sprintf("stores_online_seller_%d", store_id)	
-	
+	key := fmt.Sprintf("stores_online_seller_%d", store_id)
+
 	on, err := redis.Bool(conn.Do("SISMEMBER", key, seller_id))
 	if err != nil {
 		log.Error("sismember err:", err)

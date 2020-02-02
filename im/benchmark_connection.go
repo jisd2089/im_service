@@ -1,29 +1,25 @@
 package main
 
-import "net"
-import "log"
-import "runtime"
-import "time"
-import "flag"
-import "math/rand"
-import "fmt"
-import cryptorand "crypto/rand"
-import "encoding/base64"
-import "github.com/gomodule/redigo/redis"
+import (
+	cryptorand "crypto/rand"
+	"encoding/base64"
+	"flag"
+	"fmt"
+	"log"
+	"math/rand"
+	"net"
+	"runtime"
+	"time"
 
-const APPID = 7
-const REDIS_HOST = "127.0.0.1:6379"
-const REDIS_PASSWORD = ""
-const REDIS_DB = 0
+	"github.com/gomodule/redigo/redis"
+)
 
-
-var first int64
-var last int64
-var local_ip string
-var host string
-var port int
-
-var redis_pool *redis.Pool
+const (
+	APPID          = 7
+	REDIS_HOST     = "127.0.0.1:6379"
+	REDIS_PASSWORD = ""
+	REDIS_DB       = 0
+)
 
 func init() {
 	flag.Int64Var(&first, "first", 0, "first uid")
@@ -33,14 +29,13 @@ func init() {
 	flag.IntVar(&port, "port", 23000, "port")
 }
 
-
 func NewRedisPool(server, password string, db int) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     100,
 		MaxActive:   500,
 		IdleTimeout: 480 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			timeout := time.Duration(2)*time.Second
+			timeout := time.Duration(2) * time.Second
 			c, err := redis.DialTimeout("tcp", server, timeout, 0, 0)
 			if err != nil {
 				return nil, err
@@ -62,12 +57,10 @@ func NewRedisPool(server, password string, db int) *redis.Pool {
 	}
 }
 
-
-
 func GenerateRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := cryptorand.Read(b)
-    // Note that err == nil only if we read len(b) bytes.
+	// Note that err == nil only if we read len(b) bytes.
 	if err != nil {
 		return nil, err
 	}
@@ -80,8 +73,6 @@ func GenerateRandomString(s int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
-
-
 func SaveUserAccessToken(token string, appid int64, uid int64) (error) {
 	conn := redis_pool.Get()
 	defer conn.Close()
@@ -90,13 +81,12 @@ func SaveUserAccessToken(token string, appid int64, uid int64) (error) {
 
 	_, err := conn.Do("HMSET", key, "user_id", uid, "app_id", appid)
 	if err != nil {
-		return err		
+		return err
 	}
 
 	_, err = conn.Do("EXPIRE", key, 60*60)
 	return err
 }
-
 
 func receive(uid int64) {
 	ip := net.ParseIP(host)
@@ -112,19 +102,18 @@ func receive(uid int64) {
 		return
 	}
 
-
 	token, err := GenerateRandomString(32)
 	if err != nil {
 		log.Panicln("err:", err)
 	}
-	
+
 	err = SaveUserAccessToken(token, APPID, uid)
 	if err != nil {
 		log.Panicln("redis err:", err)
 	}
-	
+
 	seq := 1
-	SendMessage(conn, &Message{cmd:MSG_AUTH_TOKEN, seq:seq, version:DEFAULT_VERSION, flag:0, body:&AuthenticationToken{token: token, platform_id:PLATFORM_WEB, device_id:"1"}})
+	SendMessage(conn, &Message{cmd: MSG_AUTH_TOKEN, seq: seq, version: DEFAULT_VERSION, flag: 0, body: &AuthenticationToken{token: token, platform_id: PLATFORM_WEB, device_id: "1"}})
 	ReceiveMessage(conn)
 
 	q := make(chan bool, 10)
@@ -142,10 +131,10 @@ func receive(uid int64) {
 				msgid++
 				receiver := first + rand.Int63()%(last-first)
 				im := &IMMessage{uid, receiver, 0, int32(msgid), "test"}
-				SendMessage(conn, &Message{cmd:MSG_IM, seq:seq, version:DEFAULT_VERSION, flag:0, body:im})
+				SendMessage(conn, &Message{cmd: MSG_IM, seq: seq, version: DEFAULT_VERSION, flag: 0, body: im})
 			case <-ticker.C:
 				seq++
-				SendMessage(conn, &Message{cmd:MSG_PING, seq:seq, version:DEFAULT_VERSION, flag:0, body:nil})
+				SendMessage(conn, &Message{cmd: MSG_PING, seq: seq, version: DEFAULT_VERSION, flag: 0, body: nil})
 			case m := <-wt:
 				if m == nil {
 					q <- true
@@ -168,7 +157,7 @@ func receive(uid int64) {
 			}
 
 			if msg.cmd == MSG_IM || msg.cmd == MSG_GROUP_IM {
-				ack := &Message{cmd: MSG_ACK, body: &MessageACK{seq:int32(msg.seq)}}
+				ack := &Message{cmd: MSG_ACK, body: &MessageACK{seq: int32(msg.seq)}}
 				wt <- ack
 			}
 		}
@@ -199,7 +188,7 @@ func main() {
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
 	redis_pool = NewRedisPool(REDIS_HOST, REDIS_PASSWORD, REDIS_DB)
-	
+
 	c := make(chan bool, 100)
 	var i int64
 	var j int64

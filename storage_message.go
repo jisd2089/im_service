@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,72 +18,73 @@
  */
 
 package main
-import "bytes"
-import "encoding/binary"
 
+import (
+	"bytes"
+	"encoding/binary"
+)
 
 //主从同步消息
-const MSG_STORAGE_SYNC_BEGIN = 220
-const MSG_STORAGE_SYNC_MESSAGE = 221
-const MSG_STORAGE_SYNC_MESSAGE_BATCH = 222
+const (
+	MSG_STORAGE_SYNC_BEGIN         = 220
+	MSG_STORAGE_SYNC_MESSAGE       = 221
+	MSG_STORAGE_SYNC_MESSAGE_BATCH = 222
 
+	//内部文件存储使用
+	//超级群消息队列 代替MSG_GROUP_IM_LIST
+	MSG_GROUP_OFFLINE = 247
 
-//内部文件存储使用
-//超级群消息队列 代替MSG_GROUP_IM_LIST
-const MSG_GROUP_OFFLINE = 247
+	//个人消息队列 代替MSG_OFFLINE_V3
+	MSG_OFFLINE_V4 = 248
 
-//个人消息队列 代替MSG_OFFLINE_V3
-const MSG_OFFLINE_V4 = 248
+	//个人消息队列 代替MSG_OFFLINE_V2
+	MSG_OFFLINE_V3 = 249
 
-//个人消息队列 代替MSG_OFFLINE_V2
-const MSG_OFFLINE_V3 = 249
+	//个人消息队列 代替MSG_OFFLINE
+	//deprecated  兼容性
+	MSG_OFFLINE_V2 = 250
 
-//个人消息队列 代替MSG_OFFLINE
-//deprecated  兼容性
-const MSG_OFFLINE_V2 = 250  
+	//im实例使用
+	MSG_PENDING_GROUP_MESSAGE = 251
 
-//im实例使用
-const MSG_PENDING_GROUP_MESSAGE = 251
+	//超级群消息队列
+	//deprecated 兼容性
+	MSG_GROUP_IM_LIST = 252
 
-//超级群消息队列
-//deprecated 兼容性
-const MSG_GROUP_IM_LIST = 252
+	//deprecated
+	MSG_GROUP_ACK_IN = 253
 
-//deprecated
-const MSG_GROUP_ACK_IN = 253
+	//deprecated 兼容性
+	MSG_OFFLINE = 254
 
-//deprecated 兼容性
-const MSG_OFFLINE = 254
-
-//deprecated
-const MSG_ACK_IN = 255
-
+	//deprecated
+	MSG_ACK_IN = 255
+)
 
 func init() {
-	message_creators[MSG_GROUP_OFFLINE] = func()IMessage{return new (OfflineMessage4)}
-	message_creators[MSG_OFFLINE_V4] = func()IMessage{return new (OfflineMessage4)}	
-	message_creators[MSG_OFFLINE_V3] = func()IMessage{return new (OfflineMessage3)}
-	message_creators[MSG_OFFLINE_V2] = func()IMessage{return new (OfflineMessage2)}
-	message_creators[MSG_PENDING_GROUP_MESSAGE] = func()IMessage{return new (PendingGroupMessage)}
-	message_creators[MSG_GROUP_IM_LIST] = func()IMessage{return new(GroupOfflineMessage)}
-	message_creators[MSG_GROUP_ACK_IN] = func()IMessage{return new(IgnoreMessage)}
+	message_creators[MSG_GROUP_OFFLINE] = func() IMessage { return new(OfflineMessage4) }
+	message_creators[MSG_OFFLINE_V4] = func() IMessage { return new(OfflineMessage4) }
+	message_creators[MSG_OFFLINE_V3] = func() IMessage { return new(OfflineMessage3) }
+	message_creators[MSG_OFFLINE_V2] = func() IMessage { return new(OfflineMessage2) }
+	message_creators[MSG_PENDING_GROUP_MESSAGE] = func() IMessage { return new(PendingGroupMessage) }
+	message_creators[MSG_GROUP_IM_LIST] = func() IMessage { return new(GroupOfflineMessage) }
+	message_creators[MSG_GROUP_ACK_IN] = func() IMessage { return new(IgnoreMessage) }
 
-	message_creators[MSG_OFFLINE] = func()IMessage{return new(OfflineMessage1)}
-	message_creators[MSG_ACK_IN] = func()IMessage{return new(IgnoreMessage)}
+	message_creators[MSG_OFFLINE] = func() IMessage { return new(OfflineMessage1) }
+	message_creators[MSG_ACK_IN] = func() IMessage { return new(IgnoreMessage) }
 
-	message_creators[MSG_STORAGE_SYNC_BEGIN] = func()IMessage{return new(SyncCursor)}
-	message_creators[MSG_STORAGE_SYNC_MESSAGE] = func()IMessage{return new(EMessage)}
-	message_creators[MSG_STORAGE_SYNC_MESSAGE_BATCH] = func()IMessage{return new(MessageBatch)}
-
+	message_creators[MSG_STORAGE_SYNC_BEGIN] = func() IMessage { return new(SyncCursor) }
+	message_creators[MSG_STORAGE_SYNC_MESSAGE] = func() IMessage { return new(EMessage) }
+	message_creators[MSG_STORAGE_SYNC_MESSAGE_BATCH] = func() IMessage { return new(MessageBatch) }
 
 	message_descriptions[MSG_STORAGE_SYNC_BEGIN] = "MSG_STORAGE_SYNC_BEGIN"
 	message_descriptions[MSG_STORAGE_SYNC_MESSAGE] = "MSG_STORAGE_SYNC_MESSAGE"
 	message_descriptions[MSG_STORAGE_SYNC_MESSAGE_BATCH] = "MSG_STORAGE_SYNC_MESSAGE_BATCH"
 
 	message_descriptions[MSG_GROUP_OFFLINE] = "MSG_GROUP_OFFLINE"
-	message_descriptions[MSG_OFFLINE_V4] = "MSG_OFFLINE_V4"		
-	message_descriptions[MSG_OFFLINE_V3] = "MSG_OFFLINE_V3"	
-	message_descriptions[MSG_OFFLINE_V2] = "MSG_OFFLINE_V2"	
+	message_descriptions[MSG_OFFLINE_V4] = "MSG_OFFLINE_V4"
+	message_descriptions[MSG_OFFLINE_V3] = "MSG_OFFLINE_V3"
+	message_descriptions[MSG_OFFLINE_V2] = "MSG_OFFLINE_V2"
 	message_descriptions[MSG_PENDING_GROUP_MESSAGE] = "MSG_PENDING_GROUP_MESSAGE"
 	message_descriptions[MSG_GROUP_IM_LIST] = "MSG_GROUP_IM_LIST"
 }
@@ -108,9 +109,9 @@ func (cursor *SyncCursor) FromData(buff []byte) bool {
 }
 
 type EMessage struct {
-	msgid int64
+	msgid     int64
 	device_id int64
-	msg   *Message
+	msg       *Message
 }
 
 func (emsg *EMessage) ToData() []byte {
@@ -203,19 +204,18 @@ func (batch *MessageBatch) FromData(buff []byte) bool {
 	return true
 }
 
-
 type IOfflineMessage interface {
 	body() *OfflineMessage
 }
 
 type OfflineMessage struct {
-	appid    int64
-	receiver int64 //用户id or 群组id
-	msgid    int64 //消息本体的id
-	device_id int64
-	seq_id   int64      //v4 消息序号, 1,2,3...
-	prev_msgid  int64 //个人消息队列(点对点消息，群组消息)
-	prev_peer_msgid int64 //v2 点对点消息队列 
+	appid            int64
+	receiver         int64 //用户id or 群组id
+	msgid            int64 //消息本体的id
+	device_id        int64
+	seq_id           int64 //v4 消息序号, 1,2,3...
+	prev_msgid       int64 //个人消息队列(点对点消息，群组消息)
+	prev_peer_msgid  int64 //v2 点对点消息队列
 	prev_batch_msgid int64 //v3 0<-1000<-2000<-3000...构成一个消息队列	
 }
 
@@ -223,11 +223,9 @@ func (off *OfflineMessage) body() *OfflineMessage {
 	return off
 }
 
-
 type OfflineMessage1 struct {
 	OfflineMessage
 }
-
 
 func (off *OfflineMessage1) ToData() []byte {
 	buffer := new(bytes.Buffer)
@@ -257,11 +255,9 @@ func (off *OfflineMessage1) FromData(buff []byte) bool {
 	return true
 }
 
-
 type OfflineMessage2 struct {
 	OfflineMessage
 }
-
 
 func (off *OfflineMessage2) ToData() []byte {
 	buffer := new(bytes.Buffer)
@@ -270,7 +266,7 @@ func (off *OfflineMessage2) ToData() []byte {
 	binary.Write(buffer, binary.BigEndian, off.msgid)
 	binary.Write(buffer, binary.BigEndian, off.device_id)
 	binary.Write(buffer, binary.BigEndian, off.prev_msgid)
-	binary.Write(buffer, binary.BigEndian, off.prev_peer_msgid)	
+	binary.Write(buffer, binary.BigEndian, off.prev_peer_msgid)
 	buf := buffer.Bytes()
 	return buf
 }
@@ -285,10 +281,9 @@ func (off *OfflineMessage2) FromData(buff []byte) bool {
 	binary.Read(buffer, binary.BigEndian, &off.msgid)
 	binary.Read(buffer, binary.BigEndian, &off.device_id)
 	binary.Read(buffer, binary.BigEndian, &off.prev_msgid)
-	binary.Read(buffer, binary.BigEndian, &off.prev_peer_msgid)	
+	binary.Read(buffer, binary.BigEndian, &off.prev_peer_msgid)
 	return true
 }
-
 
 type OfflineMessage3 struct {
 	OfflineMessage
@@ -332,7 +327,7 @@ func (off *OfflineMessage4) ToData() []byte {
 	binary.Write(buffer, binary.BigEndian, off.receiver)
 	binary.Write(buffer, binary.BigEndian, off.msgid)
 	binary.Write(buffer, binary.BigEndian, off.device_id)
-	binary.Write(buffer, binary.BigEndian, off.seq_id)	
+	binary.Write(buffer, binary.BigEndian, off.seq_id)
 	binary.Write(buffer, binary.BigEndian, off.prev_msgid)
 	binary.Write(buffer, binary.BigEndian, off.prev_peer_msgid)
 	binary.Write(buffer, binary.BigEndian, off.prev_batch_msgid)
@@ -349,14 +344,12 @@ func (off *OfflineMessage4) FromData(buff []byte) bool {
 	binary.Read(buffer, binary.BigEndian, &off.receiver)
 	binary.Read(buffer, binary.BigEndian, &off.msgid)
 	binary.Read(buffer, binary.BigEndian, &off.device_id)
-	binary.Read(buffer, binary.BigEndian, &off.seq_id)	
+	binary.Read(buffer, binary.BigEndian, &off.seq_id)
 	binary.Read(buffer, binary.BigEndian, &off.prev_msgid)
 	binary.Read(buffer, binary.BigEndian, &off.prev_peer_msgid)
 	binary.Read(buffer, binary.BigEndian, &off.prev_batch_msgid)
 	return true
 }
-
-
 
 type GroupOfflineMessage struct {
 	OfflineMessage
@@ -390,18 +383,16 @@ func (off *GroupOfflineMessage) FromData(buff []byte) bool {
 	return true
 }
 
-
-
 //待发送的群组消息临时存储结构
 type PendingGroupMessage struct {
-    appid     int64
+	appid     int64
 	sender    int64
 	device_ID int64 //发送者的设备id
 	gid       int64
 	timestamp int32
 
-	members   []int64 //需要接受此消息的成员列表
-	content   string
+	members []int64 //需要接受此消息的成员列表
+	content string
 }
 
 func (gm *PendingGroupMessage) ToData() []byte {
@@ -417,8 +408,8 @@ func (gm *PendingGroupMessage) ToData() []byte {
 	for _, uid := range gm.members {
 		binary.Write(buffer, binary.BigEndian, uid)
 	}
-	
-	buffer.Write([]byte(gm.content))	
+
+	buffer.Write([]byte(gm.content))
 	buf := buffer.Bytes()
 	return buf
 }
@@ -437,10 +428,10 @@ func (gm *PendingGroupMessage) FromData(buff []byte) bool {
 	var count int16
 	binary.Read(buffer, binary.BigEndian, &count)
 
-	if len(buff) < int(38 + count*8) {
+	if len(buff) < int(38+count*8) {
 		return false
 	}
-	
+
 	gm.members = make([]int64, count)
 	for i := 0; i < int(count); i++ {
 		var uid int64
@@ -448,7 +439,7 @@ func (gm *PendingGroupMessage) FromData(buff []byte) bool {
 		gm.members[i] = uid
 	}
 	offset := 38 + count*8
-	gm.content = string(buff[offset:])	
+	gm.content = string(buff[offset:])
 
 	return true
 }

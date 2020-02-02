@@ -1,16 +1,19 @@
 package main
 
-import "net/http"
-import "encoding/json"
-import "os"
-import "runtime"
-import "runtime/pprof"
-import log "github.com/golang/glog"
+import (
+	"encoding/json"
+	"net/http"
+	"os"
+	"runtime"
+	"runtime/pprof"
+
+	log "github.com/golang/glog"
+)
 
 type ServerSummary struct {
-	nrequests         int64
-	peer_message_count int64
-	group_message_count  int64
+	nrequests           int64
+	peer_message_count  int64
+	group_message_count int64
 }
 
 func NewServerSummary() *ServerSummary {
@@ -18,13 +21,12 @@ func NewServerSummary() *ServerSummary {
 	return s
 }
 
-
 func Summary(rw http.ResponseWriter, req *http.Request) {
 	obj := make(map[string]interface{})
 	obj["goroutine_count"] = runtime.NumGoroutine()
 	obj["request_count"] = server_summary.nrequests
 	obj["peer_message_count"] = server_summary.peer_message_count
-	obj["group_message_count"] = server_summary.group_message_count	
+	obj["group_message_count"] = server_summary.group_message_count
 
 	res, err := json.Marshal(obj)
 	if err != nil {

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,14 +18,18 @@
  */
 
 package main
-import "time"
-import "strings"
-import "strconv"
-import "sync/atomic"
-import "github.com/gomodule/redigo/redis"
-import log "github.com/golang/glog"
 
+import (
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"time"
 
+	log "github.com/golang/glog"
+	"github.com/gomodule/redigo/redis"
+)
+
+// HandleForbidden .
 func HandleForbidden(data string) {
 	arr := strings.Split(data, ",")
 	if len(arr) != 3 {
@@ -58,9 +62,9 @@ func HandleForbidden(data string) {
 		return
 	}
 
-	log.Infof("forbidden:%d %d %d client count:%d", 
+	log.Infof("forbidden:%d %d %d client count:%d",
 		appid, uid, fb, len(clients))
-	for c, _ := range(clients) {
+	for c, _ := range (clients) {
 		atomic.StoreInt32(&c.forbidden, int32(fb))
 	}
 }
@@ -80,7 +84,7 @@ func SubscribeRedis() bool {
 		}
 	}
 
-	psc := redis.PubSubConn{c}
+	psc := redis.PubSubConn{Conn: c}
 	psc.Subscribe("speak_forbidden")
 
 	for {
@@ -100,17 +104,17 @@ func SubscribeRedis() bool {
 }
 
 func ListenRedis() {
-	nsleep := 1
+	nSleep := 1
 	for {
 		connected := SubscribeRedis()
 		if !connected {
-			nsleep *= 2
-			if nsleep > 60 {
-				nsleep = 60
+			nSleep *= 2
+			if nSleep > 60 {
+				nSleep = 60
 			}
 		} else {
-			nsleep = 1
+			nSleep = 1
 		}
-		time.Sleep(time.Duration(nsleep) * time.Second)
+		time.Sleep(time.Duration(nSleep) * time.Second)
 	}
 }

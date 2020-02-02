@@ -19,12 +19,15 @@
 
 package main
 
+// IntSet .
 type IntSet map[int64]struct{}
 
+// NewIntSet .
 func NewIntSet() IntSet {
 	return make(map[int64]struct{})
 }
 
+// Add .
 func (set IntSet) Add(v int64) {
 	if _, ok := set[v]; ok {
 		return
@@ -32,6 +35,7 @@ func (set IntSet) Add(v int64) {
 	set[v] = struct{}{}
 }
 
+// IsMember .
 func (set IntSet) IsMember(v int64) bool {
 	if _, ok := set[v]; ok {
 		return true
@@ -39,6 +43,7 @@ func (set IntSet) IsMember(v int64) bool {
 	return false
 }
 
+// Remove .
 func (set IntSet) Remove(v int64) {
 	if _, ok := set[v]; !ok {
 		return
@@ -46,6 +51,7 @@ func (set IntSet) Remove(v int64) {
 	delete(set, v)
 }
 
+// Clone .
 func (set IntSet) Clone() IntSet {
 	n := make(map[int64]struct{})
 	for k, v := range set {

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,12 +19,15 @@
 
 package main
 
-import "strconv"
-import "log"
-import "github.com/richmonkey/cfg"
+import (
+	"log"
+	"strconv"
+
+	"github.com/richmonkey/cfg"
+)
 
 type RouteConfig struct {
-	listen string
+	listen              string
 	redis_address       string
 	redis_password      string
 	redis_db            int
@@ -55,7 +58,6 @@ func get_opt_int(app_cfg map[string]string, key string) int64 {
 	}
 	return n
 }
-
 
 func get_string(app_cfg map[string]string, key string) string {
 	concurrency, present := app_cfg[key]

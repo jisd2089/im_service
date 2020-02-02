@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,12 +20,12 @@
 package main
 
 import (
+	"bytes"
+	"net/http"
+
 	log "github.com/golang/glog"
 	"github.com/gorilla/websocket"
-	"net/http"
-	"bytes"
 )
-
 
 func ReadBinaryMesage(b []byte) *Message {
 	reader := bytes.NewReader(b)
@@ -40,7 +40,7 @@ func CheckOrigin(r *http.Request) bool {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin:CheckOrigin,
+	CheckOrigin:     CheckOrigin,
 }
 
 func ServeWebsocket(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,7 @@ func ServeWebsocket(w http.ResponseWriter, r *http.Request) {
 		log.Error("upgrade err:", err)
 		return
 	}
-	conn.SetReadLimit(64*1024)
+	conn.SetReadLimit(64 * 1024)
 	conn.SetPongHandler(func(string) error {
 		log.Info("brower websocket pong...")
 		return nil
@@ -58,7 +58,6 @@ func ServeWebsocket(w http.ResponseWriter, r *http.Request) {
 	client := NewClient(conn)
 	client.Run()
 }
-
 
 func StartWSSServer(tls_address string, cert_file string, key_file string) {
 	mux := http.NewServeMux()
@@ -81,7 +80,6 @@ func StartWSServer(address string) {
 		log.Fatalf("listen err:%s", err)
 	}
 }
-
 
 func ReadWebsocketMessage(conn *websocket.Conn) *Message {
 	messageType, p, err := conn.ReadMessage()

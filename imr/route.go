@@ -18,6 +18,7 @@
  */
 
 package main
+
 import "sync"
 
 type Route struct {
@@ -27,14 +28,13 @@ type Route struct {
 	room_ids  IntSet
 }
 
-func NewRoute(appid int64) *Route {
+func NewRoute(appID int64) *Route {
 	r := new(Route)
-	r.appid = appid
+	r.appid = appID
 	r.uids = make(map[int64]bool)
 	r.room_ids = NewIntSet()
 	return r
 }
-
 
 func (route *Route) ContainUserID(uid int64) bool {
 	route.mutex.Lock()

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,33 +19,39 @@
 
 package main
 
-import "io"
-import "bytes"
-import "encoding/binary"
-import log "github.com/golang/glog"
-import "errors"
-import "encoding/hex"
+import (
+	"bytes"
+	"encoding/binary"
+	"encoding/hex"
+	"errors"
+	"io"
 
-//平台号
-const PLATFORM_IOS = 1
-const PLATFORM_ANDROID = 2
-const PLATFORM_WEB = 3
+	log "github.com/golang/glog"
+)
 
-const DEFAULT_VERSION = 2
+const (
+	//平台号
+	PLATFORM_IOS     = 1
+	PLATFORM_ANDROID = 2
+	PLATFORM_WEB     = 3
 
-const MSG_HEADER_SIZE = 12
+	DEFAULT_VERSION = 2
+
+	MSG_HEADER_SIZE = 12
+)
 
 var message_descriptions map[int]string = make(map[int]string)
 
-type MessageCreator func()IMessage
+type MessageCreator func() IMessage
+
 var message_creators map[int]MessageCreator = make(map[int]MessageCreator)
 
-type VersionMessageCreator func()IVersionMessage
+type VersionMessageCreator func() IVersionMessage
+
 var vmessage_creators map[int]VersionMessageCreator = make(map[int]VersionMessageCreator)
 
 //true client->server
 var external_messages [256]bool;
-
 
 func WriteHeader(len int32, seq int32, cmd byte, version byte, flag byte, buffer io.Writer) {
 	binary.Write(buffer, binary.BigEndian, len)
@@ -88,7 +94,7 @@ func SendMessage(conn io.Writer, msg *Message) error {
 	return nil
 }
 
-func ReceiveLimitMessage(conn io.Reader, limit_size int, external bool) *Message {
+func ReceiveLimitMessage(conn io.Reader, limitSize int, external bool) *Message {
 	buff := make([]byte, 12)
 	_, err := io.ReadFull(conn, buff)
 	if err != nil {
@@ -97,7 +103,7 @@ func ReceiveLimitMessage(conn io.Reader, limit_size int, external bool) *Message
 	}
 
 	length, seq, cmd, version, flag := ReadHeader(buff)
-	if length < 0 || length >= limit_size {
+	if length < 0 || length >= limitSize {
 		log.Info("invalid len:", length)
 		return nil
 	}
@@ -108,7 +114,7 @@ func ReceiveLimitMessage(conn io.Reader, limit_size int, external bool) *Message
 		log.Warning("invalid external message cmd:", Command(cmd))
 		return nil
 	}
-	
+
 	buff = make([]byte, length)
 	_, err = io.ReadFull(conn, buff)
 	if err != nil {
@@ -129,7 +135,6 @@ func ReceiveLimitMessage(conn io.Reader, limit_size int, external bool) *Message
 	return message
 }
 
-
 func ReceiveMessage(conn io.Reader) *Message {
 	return ReceiveLimitMessage(conn, 32*1024, false)
 }
@@ -148,5 +153,3 @@ func ReceiveStorageSyncMessage(conn io.Reader) *Message {
 func ReceiveStorageMessage(conn io.Reader) *Message {
 	return ReceiveLimitMessage(conn, 1024*1024, false)
 }
-
-

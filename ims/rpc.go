@@ -101,14 +101,14 @@ func GetLatestMessage(addr string, r *HistoryRequest) []*HistoryMessage {
 	messages := storage.LoadLatestMessages(r.AppID, r.Uid, int(r.Limit))
 
 	historyMessages := make([]*HistoryMessage, 0, 10)
-	for _, emsg := range(messages) {
+	for _, eMsg := range messages {
 		hm := &HistoryMessage{}
-		hm.MsgID = emsg.msgid
-		hm.DeviceID = emsg.device_id
-		hm.Cmd = int32(emsg.msg.cmd)
+		hm.MsgID = eMsg.msgid
+		hm.DeviceID = eMsg.device_id
+		hm.Cmd = int32(eMsg.msg.cmd)
  
-		emsg.msg.version = DEFAULT_VERSION
-		hm.Raw = emsg.msg.ToData()
+		eMsg.msg.version = DEFAULT_VERSION
+		hm.Raw = eMsg.msg.ToData()
 		historyMessages = append(historyMessages, hm)
 	}
 

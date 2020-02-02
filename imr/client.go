@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,22 +18,25 @@
  */
 
 package main
-import "net"
-import log "github.com/golang/glog"
 
+import (
+	"net"
+
+	log "github.com/golang/glog"
+)
 
 type Push struct {
 	queue_name string
-	content []byte
+	content    []byte
 }
 
 type Client struct {
-	wt     chan *Message
-	
-	pwt     chan *Push
-	
-	conn   *net.TCPConn
-	app_route *AppRoute
+	wt chan *Message
+
+	pwt chan *Push
+
+	conn     *net.TCPConn
+	appRoute *AppRoute
 }
 
 func NewClient(conn *net.TCPConn) *Client {
@@ -41,12 +44,12 @@ func NewClient(conn *net.TCPConn) *Client {
 	client.conn = conn
 	client.pwt = make(chan *Push, 10000)
 	client.wt = make(chan *Message, 10)
-	client.app_route = NewAppRoute()
+	client.appRoute = NewAppRoute()
 	return client
 }
 
 func (client *Client) ContainAppUserID(id *AppUserID) bool {
-	route := client.app_route.FindRoute(id.appid)
+	route := client.appRoute.FindRoute(id.appid)
 	if route == nil {
 		return false
 	}
@@ -55,7 +58,7 @@ func (client *Client) ContainAppUserID(id *AppUserID) bool {
 }
 
 func (client *Client) IsAppUserOnline(id *AppUserID) bool {
-	route := client.app_route.FindRoute(id.appid)
+	route := client.appRoute.FindRoute(id.appid)
 	if route == nil {
 		return false
 	}
@@ -64,7 +67,7 @@ func (client *Client) IsAppUserOnline(id *AppUserID) bool {
 }
 
 func (client *Client) ContainAppRoomID(id *AppRoomID) bool {
-	route := client.app_route.FindRoute(id.appid)
+	route := client.appRoute.FindRoute(id.appid)
 	if route == nil {
 		return false
 	}
@@ -112,17 +115,16 @@ func (client *Client) HandleMessage(msg *Message) {
 
 func (client *Client) HandleSubscribe(id *SubscribeMessage) {
 	log.Infof("subscribe appid:%d uid:%d online:%d", id.appid, id.uid, id.online)
-	route := client.app_route.FindOrAddRoute(id.appid)
+	route := client.appRoute.FindOrAddRoute(id.appid)
 	on := id.online != 0
 	route.AddUserID(id.uid, on)
 }
 
 func (client *Client) HandleUnsubscribe(id *AppUserID) {
 	log.Infof("unsubscribe appid:%d uid:%d", id.appid, id.uid)
-	route := client.app_route.FindOrAddRoute(id.appid)
+	route := client.appRoute.FindOrAddRoute(id.appid)
 	route.RemoveUserID(id.uid)
 }
-
 
 func (client *Client) HandlePublishGroup(amsg *AppMessage) {
 	log.Infof("publish message appid:%d group id:%d msgid:%d cmd:%s", amsg.appid, amsg.receiver, amsg.msgid, Command(amsg.msg.cmd))
@@ -130,8 +132,8 @@ func (client *Client) HandlePublishGroup(amsg *AppMessage) {
 	//群发给所有接入服务器
 	s := GetClientSet()
 
-	msg := &Message{cmd:MSG_PUBLISH_GROUP, body:amsg}
-	for c := range(s) {
+	msg := &Message{cmd: MSG_PUBLISH_GROUP, body: amsg}
+	for c := range (s) {
 		//不发送给自身
 		if client == c {
 			continue
@@ -143,9 +145,9 @@ func (client *Client) HandlePublishGroup(amsg *AppMessage) {
 func (client *Client) HandlePush(pmsg *BatchPushMessage) {
 	log.Infof("push message appid:%d cmd:%s", pmsg.appid, Command(pmsg.msg.cmd))
 
-	off_members := make([]int64, 0)	
-	
-	for _, uid := range(pmsg.receivers) {
+	off_members := make([]int64, 0)
+
+	for _, uid := range (pmsg.receivers) {
 		if !IsUserOnline(pmsg.appid, uid) {
 			off_members = append(off_members, uid)
 		}
@@ -158,11 +160,11 @@ func (client *Client) HandlePush(pmsg *BatchPushMessage) {
 		} else if cmd == MSG_IM {
 			//assert len(off_members) == 1
 			client.PublishPeerMessage(pmsg.appid, pmsg.msg.body.(*IMMessage))
-		} else if cmd == MSG_CUSTOMER || 
+		} else if cmd == MSG_CUSTOMER ||
 			cmd == MSG_CUSTOMER_SUPPORT {
 			//assert len(off_members) == 1
 			receiver := off_members[0]
-			client.PublishCustomerMessage(pmsg.appid, receiver, 
+			client.PublishCustomerMessage(pmsg.appid, receiver,
 				pmsg.msg.body.(*CustomerMessage), pmsg.msg.cmd)
 		} else if cmd == MSG_SYSTEM {
 			//assert len(off_members) == 1
@@ -178,10 +180,10 @@ func (client *Client) HandlePush(pmsg *BatchPushMessage) {
 func (client *Client) HandlePublish(amsg *AppMessage) {
 	log.Infof("publish message appid:%d uid:%d msgid:%d cmd:%s", amsg.appid, amsg.receiver, amsg.msgid, Command(amsg.msg.cmd))
 
-	receiver := &AppUserID{appid:amsg.appid, uid:amsg.receiver}
+	receiver := &AppUserID{appid: amsg.appid, uid: amsg.receiver}
 	s := FindClientSet(receiver)
-	msg := &Message{cmd:MSG_PUBLISH, body:amsg}
-	for c := range(s) {
+	msg := &Message{cmd: MSG_PUBLISH, body: amsg}
+	for c := range (s) {
 		//不发送给自身
 		if client == c {
 			continue
@@ -192,23 +194,23 @@ func (client *Client) HandlePublish(amsg *AppMessage) {
 
 func (client *Client) HandleSubscribeRoom(id *AppRoomID) {
 	log.Infof("subscribe appid:%d room id:%d", id.appid, id.room_id)
-	route := client.app_route.FindOrAddRoute(id.appid)
+	route := client.appRoute.FindOrAddRoute(id.appid)
 	route.AddRoomID(id.room_id)
 }
 
 func (client *Client) HandleUnsubscribeRoom(id *AppRoomID) {
 	log.Infof("unsubscribe appid:%d room id:%d", id.appid, id.room_id)
-	route := client.app_route.FindOrAddRoute(id.appid)
+	route := client.appRoute.FindOrAddRoute(id.appid)
 	route.RemoveRoomID(id.room_id)
 }
 
 func (client *Client) HandlePublishRoom(amsg *AppMessage) {
 	log.Infof("publish room message appid:%d room id:%d cmd:%s", amsg.appid, amsg.receiver, Command(amsg.msg.cmd))
-	receiver := &AppRoomID{appid:amsg.appid, room_id:amsg.receiver}
+	receiver := &AppRoomID{appid: amsg.appid, room_id: amsg.receiver}
 	s := FindRoomClientSet(receiver)
 
-	msg := &Message{cmd:MSG_PUBLISH_ROOM, body:amsg}
-	for c := range(s) {
+	msg := &Message{cmd: MSG_PUBLISH_ROOM, body: amsg}
+	for c := range (s) {
 		//不发送给自身
 		if client == c {
 			continue
@@ -217,7 +219,6 @@ func (client *Client) HandlePublishRoom(amsg *AppMessage) {
 		c.wt <- msg
 	}
 }
-
 
 func (client *Client) Write() {
 	seq := 0
@@ -239,7 +240,6 @@ func (client *Client) Run() {
 	go client.Read()
 	go client.Push()
 }
-
 
 func (client *Client) read() *Message {
 	return ReceiveMessage(client.conn)

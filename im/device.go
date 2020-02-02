@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, GoBelieve     
+ * Copyright (c) 2014-2015, GoBelieve
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,24 +18,29 @@
  */
 
 package main
-import "fmt"
-import "github.com/gomodule/redigo/redis"
 
-func GetDeviceID(device_id string, platform_id int) (int64, error) {
+import (
+	"fmt"
+
+	"github.com/gomodule/redigo/redis"
+)
+
+// GetDeviceID .
+func GetDeviceID(deviceID string, platformID int) (retDeviceID int64, err error) {
 	conn := redis_pool.Get()
 	defer conn.Close()
-	key := fmt.Sprintf("devices_%s_%d", device_id, platform_id)
-	device_ID, err := redis.Int64(conn.Do("GET", key))
+	key := fmt.Sprintf("devices_%s_%d", deviceID, platformID)
+	retDeviceID, err = redis.Int64(conn.Do("GET", key))
 	if err != nil {
 		k := "devices_id"
-		device_ID, err = redis.Int64(conn.Do("INCR", k))
+		retDeviceID, err = redis.Int64(conn.Do("INCR", k))
 		if err != nil {
-			return 0, err
+			return
 		}
-		_, err = conn.Do("SET", key, device_ID)
+		_, err = conn.Do("SET", key, retDeviceID)
 		if err != nil {
-			return 0, err
+			return
 		}
 	}
-	return device_ID, err
+	return
 }
